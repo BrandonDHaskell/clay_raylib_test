@@ -17,9 +17,9 @@ struct ViewState {
     const char* label;
     Clay_ElementId tabId;
     Clay_ElementId contentId;
-    Clay_Color tabColorActive;
-    Clay_Color tabColorInactive;
-    Clay_Color contentColor;
+    Clay_Color tabActiveColor = { 70, 90, 160, 255 };
+    Clay_Color tabInactiveColor = { 50, 60, 90, 255 };
+    Clay_Color tabBackgroundColor = { 245, 245, 255, 255 };
 };
 
 static Clay_ElementId PRODUCT_TAB_ID    = CLAY_ID("ProductTab");
@@ -32,11 +32,34 @@ static Clay_ElementId SUPPLIER_BOX_ID   = CLAY_ID("SupplierBox");
 static Clay_ElementId DEPARTMENT_BOX_ID = CLAY_ID("DepartmentBox");
 static Clay_ElementId INVENTORY_BOX_ID  = CLAY_ID("InventoryBox");
 
+// Content colors
+Clay_Color navBarColor = {30, 30, 60, 255};
+Clay_Color headerColor = { 230, 235, 250, 255 };
+Clay_Color topLeftBoxColor = { 210, 225, 255, 255 };
+Clay_Color topRightBoxColor = { 230, 245, 250, 255 };
+Clay_Color tablePlaceholderColor = { 240, 240, 250, 255 };
+
 ViewState viewStates[] = {
-    { "Product View",    PRODUCT_TAB_ID,    PRODUCT_BOX_ID,    {120,120,255,255}, {100,100,200,255}, {200,255,200,255} },
-    { "Supplier View",   SUPPLIER_TAB_ID,   SUPPLIER_BOX_ID,   {120,120,255,255}, {100,100,200,255}, {200,200,255,255} },
-    { "Department View", DEPARTMENT_TAB_ID, DEPARTMENT_BOX_ID, {120,120,255,255}, {100,100,200,255}, {255,255,200,255} },
-    { "Inventory View",  INVENTORY_TAB_ID,  INVENTORY_BOX_ID,  {120,120,255,255}, {100,100,200,255}, {255,200,200,255} }
+    { "Products",        PRODUCT_TAB_ID,    PRODUCT_BOX_ID,
+        { 70, 90, 160, 255 },   // Active Tab
+        { 50, 60, 90, 255 },    // Inactive Tab
+        { 245, 245, 255, 255 }  // Content BG
+    },
+    { "Suppliers",       SUPPLIER_TAB_ID,   SUPPLIER_BOX_ID,
+        { 70, 90, 160, 255 },   // Active Tab
+        { 50, 60, 90, 255 },    // Inactive Tab
+        { 245, 245, 255, 255 }  // Content BG
+    },
+    { "Departments",     DEPARTMENT_TAB_ID, DEPARTMENT_BOX_ID,
+        { 70, 90, 160, 255 },   // Active Tab
+        { 50, 60, 90, 255 },    // Inactive Tab
+        { 245, 245, 255, 255 }  // Content BG
+    },
+    { "Inventory",       INVENTORY_TAB_ID,  INVENTORY_BOX_ID,
+        { 70, 90, 160, 255 },   // Active Tab
+        { 50, 60, 90, 255 },    // Inactive Tab
+        { 245, 245, 255, 255 }  // Content BG
+    }
 };
 
 ActiveView currentView = PRODUCT_VIEW;
@@ -82,21 +105,24 @@ int main() {
             .id = CLAY_ID("RootLayout"),
             .layout = {
                 .sizing = { CLAY_SIZING_PERCENT(1.0f), CLAY_SIZING_PERCENT(1.0f) },
-                .childGap = 10,
+                // .childGap = 10,
                 .layoutDirection = CLAY_TOP_TO_BOTTOM
             },
-            .backgroundColor = {240, 240, 240, 255}
+            .backgroundColor = {30, 30, 60, 255}  //{240, 240, 240, 255}
         }) {
+            // Begin App content
+
             // Navigation Bar
             CLAY({
                 .id = CLAY_ID("NavBar"),
                 .layout = {
                     .sizing = { CLAY_SIZING_PERCENT(1.0f), CLAY_SIZING_FIXED(50) },
-                    .padding = {10,10,5,5},
+                    .padding = {10,10,10,10},
                     .childGap = 10,
+                    .childAlignment = { CLAY_ALIGN_X_LEFT, CLAY_ALIGN_Y_CENTER },
                     .layoutDirection = CLAY_LEFT_TO_RIGHT
                 },
-                .backgroundColor = {30,30,60,255}
+                .backgroundColor = navBarColor
             }) {
                 const int viewCount = sizeof(viewStates) / sizeof(viewStates[0]);
                 for (int i = 0; i < viewCount; ++i) {
@@ -106,8 +132,8 @@ int main() {
                             .sizing = { CLAY_SIZING_FIXED(120), CLAY_SIZING_FIXED(30) }
                         },
                         .backgroundColor = (currentView == i)
-                            ? viewStates[i].tabColorActive
-                            : viewStates[i].tabColorInactive
+                            ? viewStates[i].tabActiveColor
+                            : viewStates[i].tabInactiveColor
                     });
 
                     if (Clay_PointerOver(viewStates[i].tabId) && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
@@ -116,7 +142,6 @@ int main() {
                 }
             }
 
-            // Content Area
             // Header box below NavBar
             CLAY({
                 .id = CLAY_ID("HeaderBox"),
@@ -124,16 +149,18 @@ int main() {
                     .sizing = { CLAY_SIZING_PERCENT(1.0f), CLAY_SIZING_FIXED(40) },
                     .padding = { 5, 10, 5, 10 }
                 },
-                .backgroundColor = { 220, 220, 240, 255 }  // Light header background
+                .backgroundColor = headerColor
             });
+            
+            // Content Area
             CLAY({
                 .id = CLAY_ID("ContentView"),
                 .layout = {
                     .sizing = {
                         .width = CLAY_SIZING_PERCENT(1.0f),
-                        .height = CLAY_SIZING_GROW(0, clayScreen.height - 60)
+                        .height = CLAY_SIZING_GROW(0, clayScreen.height - 60),
                     },
-                    .padding = {20, 20, 20, 20}
+                    // .padding = {20, 20, 20, 20}
                 },
                 .backgroundColor = {255,255,255,255}
             }) {
@@ -144,10 +171,60 @@ int main() {
                             .width = CLAY_SIZING_PERCENT(1.0f),
                             .height = CLAY_SIZING_PERCENT(1.0f)
                         },
-                        .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
+                        .padding = {5, 5, 5, 5},
+                        .childGap = 5,
+                        .layoutDirection = CLAY_TOP_TO_BOTTOM
                     },
-                    .backgroundColor = viewStates[currentView].contentColor
-                });
+                    .backgroundColor = {65, 65, 105, 255} //viewStates[currentView].tabBackgroundColor
+                }) {
+                    // Top 1/3: two side-by-side boxes
+                    CLAY({
+                        .id = CLAY_ID("TopRow"),
+                        .layout = {
+                            .sizing = {
+                                .width = CLAY_SIZING_PERCENT(1.0f),
+                                .height = CLAY_SIZING_PERCENT(1.0f / 3.0f)  // 1/3 height
+                            },
+                            .childGap = 5,
+                            .layoutDirection = CLAY_LEFT_TO_RIGHT
+                        }
+                    }) {
+                        CLAY({
+                            .id = CLAY_ID("TopLeftBox"),
+                            .layout = {
+                                .sizing = {
+                                    .width = CLAY_SIZING_PERCENT(0.5f),
+                                    .height = CLAY_SIZING_PERCENT(1.0f)
+                                }
+                            },
+                            .backgroundColor = topLeftBoxColor
+                        });
+                
+                        CLAY({
+                            .id = CLAY_ID("TopRightBox"),
+                            .layout = {
+                                .sizing = {
+                                    .width = CLAY_SIZING_PERCENT(0.5f),
+                                    .height = CLAY_SIZING_PERCENT(1.0f)
+                                }
+                            },
+                            .backgroundColor = topRightBoxColor
+                        });
+                    }
+                
+                    // Bottom 2/3: future table area
+                    CLAY({
+                        .id = CLAY_ID("BottomTablePlaceholder"),
+                        .layout = {
+                            .sizing = {
+                                .width = CLAY_SIZING_PERCENT(1.0f),
+                                .height = CLAY_SIZING_PERCENT(2.0f / 3.0f)
+                            }
+                        },
+                        .backgroundColor = tablePlaceholderColor
+                    });
+                }
+                
             }
         }
 
@@ -190,10 +267,16 @@ int main() {
             Clay_RenderCommand* cmd = Clay_RenderCommandArray_Get(&commands, i);
             if (cmd->commandType == CLAY_RENDER_COMMAND_TYPE_RECTANGLE &&
                 cmd->id == CLAY_ID("HeaderBox").id) {
-                DrawCenteredText(viewStates[currentView].label, {
-                    cmd->boundingBox.x, cmd->boundingBox.y,
-                    cmd->boundingBox.width, cmd->boundingBox.height
-                }, 20, DARKBLUE);
+                // Draw header text left aligned vertically centered
+                DrawText(viewStates[currentView].label,
+                    (int)(cmd->boundingBox.x + 10),  // Left padding
+                    (int)(cmd->boundingBox.y + (cmd->boundingBox.height - 20) / 2),  
+                    20, DARKBLUE);
+                // // Draw header text centered
+                // DrawCenteredText(viewStates[currentView].label, {
+                //     cmd->boundingBox.x, cmd->boundingBox.y,
+                //     cmd->boundingBox.width, cmd->boundingBox.height
+                // }, 20, DARKBLUE);
                 break;
             }
         }
