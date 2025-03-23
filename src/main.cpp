@@ -53,10 +53,25 @@ int main() {
                 .sizing = {
                     .width = CLAY_SIZING_FIXED(clayScreen.width),
                     .height = CLAY_SIZING_FIXED(clayScreen.height)
+                },
+                .childAlignment = {
+                    .x = CLAY_ALIGN_X_CENTER,
+                    .y = CLAY_ALIGN_Y_CENTER
                 }
             },
             .backgroundColor = { 135, 206, 235, 255 } // Sky blue
-        });
+        }) {
+            CLAY({
+                .id = CLAY_ID("CenteredBox"),
+                .layout = {
+                    .sizing = {
+                        .width = CLAY_SIZING_FIXED(200),
+                        .height = CLAY_SIZING_FIXED(100)
+                    }
+                },
+                .backgroundColor = { 255, 0, 0, 255 } // Red
+            });
+        }
 
         // Finalize layout and get render commands
         Clay_RenderCommandArray commands = Clay_EndLayout();
