@@ -1,0 +1,6 @@
+# Ignore build
+build/
+
+# Ignore submodules (for now)
+external/clay/
+external/raylib/
