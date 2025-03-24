@@ -1,9 +1,11 @@
 #define CLAY_IMPLEMENTATION
 #include "clay.h"
 #include "raylib.h"
+#include "themes.h"
 
 #include <vector>
 #include <cstring>
+#include <unordered_map>
 
 // ----[ Views (aka States) ]----
 enum ActiveView {
@@ -17,9 +19,9 @@ struct ViewState {
     const char* label;
     Clay_ElementId tabId;
     Clay_ElementId contentId;
-    Clay_Color tabActiveColor = { 70, 90, 160, 255 };
-    Clay_Color tabInactiveColor = { 50, 60, 90, 255 };
-    Clay_Color tabBackgroundColor = { 245, 245, 255, 255 };
+    Clay_Color tabActiveColor;
+    Clay_Color tabInactiveColor;
+    Clay_Color tabBackgroundColor;
 };
 
 static Clay_ElementId PRODUCT_TAB_ID    = CLAY_ID("ProductTab");
@@ -32,45 +34,80 @@ static Clay_ElementId SUPPLIER_BOX_ID   = CLAY_ID("SupplierBox");
 static Clay_ElementId DEPARTMENT_BOX_ID = CLAY_ID("DepartmentBox");
 static Clay_ElementId INVENTORY_BOX_ID  = CLAY_ID("InventoryBox");
 
-// Content colors
-Clay_Color navBarColor = {30, 30, 60, 255};
-Clay_Color headerColor = { 230, 235, 250, 255 };
-Clay_Color topLeftBoxColor = { 210, 225, 255, 255 };
-Clay_Color topRightBoxColor = { 230, 245, 250, 255 };
-Clay_Color tablePlaceholderColor = { 240, 240, 250, 255 };
-
 ViewState viewStates[] = {
     { "Products",        PRODUCT_TAB_ID,    PRODUCT_BOX_ID,
-        { 70, 90, 160, 255 },   // Active Tab
-        { 50, 60, 90, 255 },    // Inactive Tab
-        { 245, 245, 255, 255 }  // Content BG
+        CurrentTheme->tabActiveColor,           // Active Tab
+        CurrentTheme->tabInactiveColor,         // Inactive Tab
+        CurrentTheme->contentBackgroundColor    // Content BG
     },
     { "Suppliers",       SUPPLIER_TAB_ID,   SUPPLIER_BOX_ID,
-        { 70, 90, 160, 255 },   // Active Tab
-        { 50, 60, 90, 255 },    // Inactive Tab
-        { 245, 245, 255, 255 }  // Content BG
+        CurrentTheme->tabActiveColor,           // Active Tab
+        CurrentTheme->tabInactiveColor,         // Inactive Tab
+        CurrentTheme->contentBackgroundColor    // Content BG
     },
     { "Departments",     DEPARTMENT_TAB_ID, DEPARTMENT_BOX_ID,
-        { 70, 90, 160, 255 },   // Active Tab
-        { 50, 60, 90, 255 },    // Inactive Tab
-        { 245, 245, 255, 255 }  // Content BG
+        CurrentTheme->tabActiveColor,           // Active Tab
+        CurrentTheme->tabInactiveColor,         // Inactive Tab
+        CurrentTheme->contentBackgroundColor    // Content BG
     },
     { "Inventory",       INVENTORY_TAB_ID,  INVENTORY_BOX_ID,
-        { 70, 90, 160, 255 },   // Active Tab
-        { 50, 60, 90, 255 },    // Inactive Tab
-        { 245, 245, 255, 255 }  // Content BG
+        CurrentTheme->tabActiveColor,           // Active Tab
+        CurrentTheme->tabInactiveColor,         // Inactive Tab
+        CurrentTheme->contentBackgroundColor    // Content BG
     }
 };
 
 ActiveView currentView = PRODUCT_VIEW;
 
-// ----[ Utility ]----
+// ----[ Drawing Utilities ]----
+
 void DrawCenteredText(const char* text, Rectangle rect, int fontSize, Color color) {
     int textWidth = MeasureText(text, fontSize);
     int x = (int)(rect.x + (rect.width - textWidth) / 2);
     int y = (int)(rect.y + (rect.height - fontSize) / 2);
     DrawText(text, x, y, fontSize, color);
 }
+
+void DrawRectangleById(Clay_RenderCommandArray& commands, Clay_ElementId id) {
+    for (int i = 0; i < commands.length; ++i) {
+        Clay_RenderCommand* cmd = Clay_RenderCommandArray_Get(&commands, i);
+        if (cmd->commandType == CLAY_RENDER_COMMAND_TYPE_RECTANGLE && cmd->id == id.id) {
+            const auto& bb = cmd->boundingBox;
+            const auto& color = cmd->renderData.rectangle.backgroundColor;
+            DrawRectangleRec(
+                { bb.x, bb.y, bb.width, bb.height },
+                { (unsigned char)color.r, (unsigned char)color.g, (unsigned char)color.b, (unsigned char)color.a }
+            );
+            break;
+        }
+    }
+}
+
+void DrawCenteredTextInElement(Clay_RenderCommandArray& commands, Clay_ElementId id, const char* text, int fontSize, Color color) {
+    for (int i = 0; i < commands.length; ++i) {
+        Clay_RenderCommand* cmd = Clay_RenderCommandArray_Get(&commands, i);
+        if (cmd->commandType == CLAY_RENDER_COMMAND_TYPE_RECTANGLE && cmd->id == id.id) {
+            DrawCenteredText(text, {
+                cmd->boundingBox.x, cmd->boundingBox.y,
+                cmd->boundingBox.width, cmd->boundingBox.height
+            }, fontSize, color);
+            break;
+        }
+    }
+}
+
+void DrawLeftAlignedTextInElement(Clay_RenderCommandArray& commands, Clay_ElementId id, const char* text, int fontSize, Color color, float leftPadding = 10) {
+    for (int i = 0; i < commands.length; ++i) {
+        Clay_RenderCommand* cmd = Clay_RenderCommandArray_Get(&commands, i);
+        if (cmd->commandType == CLAY_RENDER_COMMAND_TYPE_RECTANGLE && cmd->id == id.id) {
+            float x = cmd->boundingBox.x + leftPadding;
+            float y = cmd->boundingBox.y + (cmd->boundingBox.height - fontSize) / 2;
+            DrawText(text, (int)x, (int)y, fontSize, color);
+            break;
+        }
+    }
+}
+
 
 int main() {
     const int initialWidth = 800;
@@ -91,6 +128,7 @@ int main() {
         return Clay_Dimensions{ 0, 0 };
     }, nullptr);
 
+    CurrentTheme = &LightTheme;
     while (!WindowShouldClose()) {
         int screenWidth = GetScreenWidth();
         int screenHeight = GetScreenHeight();
@@ -100,7 +138,6 @@ int main() {
         Clay_SetLayoutDimensions(clayScreen);
 
         Clay_BeginLayout();
-
         CLAY({
             .id = CLAY_ID("RootLayout"),
             .layout = {
@@ -108,7 +145,7 @@ int main() {
                 // .childGap = 10,
                 .layoutDirection = CLAY_TOP_TO_BOTTOM
             },
-            .backgroundColor = {30, 30, 60, 255}  //{240, 240, 240, 255}
+            .backgroundColor = CurrentTheme->contentBackgroundColor
         }) {
             // Begin App content
 
@@ -122,7 +159,7 @@ int main() {
                     .childAlignment = { CLAY_ALIGN_X_LEFT, CLAY_ALIGN_Y_CENTER },
                     .layoutDirection = CLAY_LEFT_TO_RIGHT
                 },
-                .backgroundColor = navBarColor
+                .backgroundColor = CurrentTheme->navBarColor
             }) {
                 const int viewCount = sizeof(viewStates) / sizeof(viewStates[0]);
                 for (int i = 0; i < viewCount; ++i) {
@@ -140,6 +177,17 @@ int main() {
                         currentView = static_cast<ActiveView>(i);
                     }
                 }
+                CLAY({
+                    .id = CLAY_ID("ToggleThemeButton"),
+                    .layout = {
+                        .sizing = { CLAY_SIZING_FIXED(120), CLAY_SIZING_FIXED(30) }
+                    },
+                    .backgroundColor = { 200, 200, 200, 255 }  // distinguishable color
+                });
+
+                if (Clay_PointerOver(CLAY_ID("ToggleThemeButton")) && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+                    CurrentTheme = (CurrentTheme == &LightTheme) ? &DarkTheme : &LightTheme;
+                }
             }
 
             // Header box below NavBar
@@ -149,7 +197,7 @@ int main() {
                     .sizing = { CLAY_SIZING_PERCENT(1.0f), CLAY_SIZING_FIXED(40) },
                     .padding = { 5, 10, 5, 10 }
                 },
-                .backgroundColor = headerColor
+                .backgroundColor = CurrentTheme->headerBackgroundColor
             });
             
             // Content Area
@@ -162,7 +210,7 @@ int main() {
                     },
                     // .padding = {20, 20, 20, 20}
                 },
-                .backgroundColor = {255,255,255,255}
+                .backgroundColor = CurrentTheme->contentBackgroundColor
             }) {
                 CLAY({
                     .id = viewStates[currentView].contentId,
@@ -175,7 +223,7 @@ int main() {
                         .childGap = 5,
                         .layoutDirection = CLAY_TOP_TO_BOTTOM
                     },
-                    .backgroundColor = {65, 65, 105, 255} //viewStates[currentView].tabBackgroundColor
+                    .backgroundColor = CurrentTheme->contentBackgroundColor
                 }) {
                     // Top 1/3: two side-by-side boxes
                     CLAY({
@@ -197,7 +245,7 @@ int main() {
                                     .height = CLAY_SIZING_PERCENT(1.0f)
                                 }
                             },
-                            .backgroundColor = topLeftBoxColor
+                            .backgroundColor = CurrentTheme->recordDetailsBoxColor
                         });
                 
                         CLAY({
@@ -208,7 +256,7 @@ int main() {
                                     .height = CLAY_SIZING_PERCENT(1.0f)
                                 }
                             },
-                            .backgroundColor = topRightBoxColor
+                            .backgroundColor = CurrentTheme->recordCrudBoxColor
                         });
                     }
                 
@@ -221,7 +269,7 @@ int main() {
                                 .height = CLAY_SIZING_PERCENT(2.0f / 3.0f)
                             }
                         },
-                        .backgroundColor = tablePlaceholderColor
+                        .backgroundColor = CurrentTheme->recordsDisplayBoxColor
                     });
                 }
                 
@@ -234,12 +282,12 @@ int main() {
         BeginDrawing();
         ClearBackground(BLACK);
 
-        // Draw rectangles
+        // Draw all rectangles
         for (int i = 0; i < commands.length; ++i) {
             Clay_RenderCommand* cmd = Clay_RenderCommandArray_Get(&commands, i);
             if (cmd->commandType == CLAY_RENDER_COMMAND_TYPE_RECTANGLE) {
-                auto& bb = cmd->boundingBox;
-                auto& color = cmd->renderData.rectangle.backgroundColor;
+                const auto& bb = cmd->boundingBox;
+                const auto& color = cmd->renderData.rectangle.backgroundColor;
                 DrawRectangleRec(
                     { bb.x, bb.y, bb.width, bb.height },
                     { (unsigned char)color.r, (unsigned char)color.g, (unsigned char)color.b, (unsigned char)color.a }
@@ -248,51 +296,16 @@ int main() {
         }
 
         // Draw tab labels
-        for (int i = 0; i < 4; ++i) {
-            for (int j = 0; j < commands.length; ++j) {
-                Clay_RenderCommand* cmd = Clay_RenderCommandArray_Get(&commands, j);
-                if (cmd->commandType == CLAY_RENDER_COMMAND_TYPE_RECTANGLE &&
-                    cmd->id == viewStates[i].tabId.id) {
-                    DrawCenteredText(viewStates[i].label, {
-                        cmd->boundingBox.x, cmd->boundingBox.y,
-                        cmd->boundingBox.width, cmd->boundingBox.height
-                    }, 14, WHITE);
-                    break;
-                }
-            }
+        int viewCount = sizeof(viewStates) / sizeof(viewStates[0]);
+        for (int i = 0; i < viewCount; ++i) {
+            DrawCenteredTextInElement(commands, viewStates[i].tabId, viewStates[i].label, 14, WHITE);
         }
 
-        // Draw Header Text inside HeaderBox
-        for (int i = 0; i < commands.length; ++i) {
-            Clay_RenderCommand* cmd = Clay_RenderCommandArray_Get(&commands, i);
-            if (cmd->commandType == CLAY_RENDER_COMMAND_TYPE_RECTANGLE &&
-                cmd->id == CLAY_ID("HeaderBox").id) {
-                // Draw header text left aligned vertically centered
-                DrawText(viewStates[currentView].label,
-                    (int)(cmd->boundingBox.x + 10),  // Left padding
-                    (int)(cmd->boundingBox.y + (cmd->boundingBox.height - 20) / 2),  
-                    20, DARKBLUE);
-                // // Draw header text centered
-                // DrawCenteredText(viewStates[currentView].label, {
-                //     cmd->boundingBox.x, cmd->boundingBox.y,
-                //     cmd->boundingBox.width, cmd->boundingBox.height
-                // }, 20, DARKBLUE);
-                break;
-            }
-        }
+        // Draw header text
+        DrawLeftAlignedTextInElement(commands, CLAY_ID("HeaderBox"), viewStates[currentView].label, 20, DARKBLUE);
 
-        // Draw centered content label
-        for (int i = 0; i < commands.length; ++i) {
-            Clay_RenderCommand* cmd = Clay_RenderCommandArray_Get(&commands, i);
-            if (cmd->commandType == CLAY_RENDER_COMMAND_TYPE_RECTANGLE &&
-                cmd->id == viewStates[currentView].contentId.id) {
-                DrawCenteredText(viewStates[currentView].label, {
-                    cmd->boundingBox.x, cmd->boundingBox.y,
-                    cmd->boundingBox.width, cmd->boundingBox.height
-                }, 24, DARKGRAY);
-                break;
-            }
-        }
+        // Draw centered label in content area
+        DrawCenteredTextInElement(commands, viewStates[currentView].contentId, viewStates[currentView].label, 24, DARKGRAY);
 
         EndDrawing();
     }
