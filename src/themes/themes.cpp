@@ -30,8 +30,8 @@ const Theme LightTheme = {
 // TODO: Update colors to actual Dark theme colors
 const Theme DarkTheme = {
     // Navbar Colors
-    {225, 225, 195, 255},      // navBarColor
-    {70, 90, 160, 255},     // tabActiveColor
+    {70, 90, 160, 255},     // navBarColor
+    {30, 30, 60, 255},      // tabActiveColor
     {50, 60, 90, 255},      // tabInactiveColor
 
     // Content Colors
