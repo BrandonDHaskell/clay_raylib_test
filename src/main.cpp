@@ -34,28 +34,38 @@ static Clay_ElementId SUPPLIER_BOX_ID   = CLAY_ID("SupplierBox");
 static Clay_ElementId DEPARTMENT_BOX_ID = CLAY_ID("DepartmentBox");
 static Clay_ElementId INVENTORY_BOX_ID  = CLAY_ID("InventoryBox");
 
-ViewState viewStates[] = {
-    { "Products",        PRODUCT_TAB_ID,    PRODUCT_BOX_ID,
-        CurrentTheme->tabActiveColor,           // Active Tab
-        CurrentTheme->tabInactiveColor,         // Inactive Tab
-        CurrentTheme->contentBackgroundColor    // Content BG
-    },
-    { "Suppliers",       SUPPLIER_TAB_ID,   SUPPLIER_BOX_ID,
-        CurrentTheme->tabActiveColor,           // Active Tab
-        CurrentTheme->tabInactiveColor,         // Inactive Tab
-        CurrentTheme->contentBackgroundColor    // Content BG
-    },
-    { "Departments",     DEPARTMENT_TAB_ID, DEPARTMENT_BOX_ID,
-        CurrentTheme->tabActiveColor,           // Active Tab
-        CurrentTheme->tabInactiveColor,         // Inactive Tab
-        CurrentTheme->contentBackgroundColor    // Content BG
-    },
-    { "Inventory",       INVENTORY_TAB_ID,  INVENTORY_BOX_ID,
-        CurrentTheme->tabActiveColor,           // Active Tab
-        CurrentTheme->tabInactiveColor,         // Inactive Tab
-        CurrentTheme->contentBackgroundColor    // Content BG
-    }
-};
+
+std::vector<ViewState> BuildViewStatesFromTheme(const Theme* theme) {
+    return {
+        { "Products", PRODUCT_TAB_ID, PRODUCT_BOX_ID, theme->tabActiveColor, theme->tabInactiveColor, theme->contentBackgroundColor },
+        { "Suppliers", SUPPLIER_TAB_ID, SUPPLIER_BOX_ID, theme->tabActiveColor, theme->tabInactiveColor, theme->contentBackgroundColor },
+        { "Departments", DEPARTMENT_TAB_ID, DEPARTMENT_BOX_ID, theme->tabActiveColor, theme->tabInactiveColor, theme->contentBackgroundColor },
+        { "Inventory", INVENTORY_TAB_ID, INVENTORY_BOX_ID, theme->tabActiveColor, theme->tabInactiveColor, theme->contentBackgroundColor }
+    };
+}
+
+// ViewState viewStates[] = {
+//     { "Products",        PRODUCT_TAB_ID,    PRODUCT_BOX_ID,
+//         CurrentTheme->tabActiveColor,           // Active Tab
+//         CurrentTheme->tabInactiveColor,         // Inactive Tab
+//         CurrentTheme->contentBackgroundColor    // Content BG
+//     },
+//     { "Suppliers",       SUPPLIER_TAB_ID,   SUPPLIER_BOX_ID,
+//         CurrentTheme->tabActiveColor,           // Active Tab
+//         CurrentTheme->tabInactiveColor,         // Inactive Tab
+//         CurrentTheme->contentBackgroundColor    // Content BG
+//     },
+//     { "Departments",     DEPARTMENT_TAB_ID, DEPARTMENT_BOX_ID,
+//         CurrentTheme->tabActiveColor,           // Active Tab
+//         CurrentTheme->tabInactiveColor,         // Inactive Tab
+//         CurrentTheme->contentBackgroundColor    // Content BG
+//     },
+//     { "Inventory",       INVENTORY_TAB_ID,  INVENTORY_BOX_ID,
+//         CurrentTheme->tabActiveColor,           // Active Tab
+//         CurrentTheme->tabInactiveColor,         // Inactive Tab
+//         CurrentTheme->contentBackgroundColor    // Content BG
+//     }
+// };
 
 ActiveView currentView = PRODUCT_VIEW;
 
@@ -110,6 +120,7 @@ void DrawLeftAlignedTextInElement(Clay_RenderCommandArray& commands, Clay_Elemen
 
 
 int main() {
+    // Set Window params and create root window
     const int initialWidth = 800;
     const int initialHeight = 600;
 
@@ -117,10 +128,12 @@ int main() {
     InitWindow(initialWidth, initialHeight, "Clay + Raylib: State Machine UI");
     SetTargetFPS(60);
 
+    // Set Clay Mem
     uint32_t clayMemSize = Clay_MinMemorySize();
     void* memory = malloc(clayMemSize);
     Clay_Arena arena = Clay_CreateArenaWithCapacityAndMemory(clayMemSize, memory);
 
+    // Set Clay Error handler
     Clay_ErrorHandler errorHandler = {};
     Clay_Context* ctx = Clay_Initialize(arena, { (float)initialWidth, (float)initialHeight }, errorHandler);
 
@@ -128,7 +141,11 @@ int main() {
         return Clay_Dimensions{ 0, 0 };
     }, nullptr);
 
+    // Set starting theme (Light theme) this can be updated in the while loop
     CurrentTheme = &LightTheme;
+    std::vector<ViewState> viewStates = BuildViewStatesFromTheme(CurrentTheme);
+
+    // Begin main loop
     while (!WindowShouldClose()) {
         int screenWidth = GetScreenWidth();
         int screenHeight = GetScreenHeight();
@@ -142,7 +159,6 @@ int main() {
             .id = CLAY_ID("RootLayout"),
             .layout = {
                 .sizing = { CLAY_SIZING_PERCENT(1.0f), CLAY_SIZING_PERCENT(1.0f) },
-                // .childGap = 10,
                 .layoutDirection = CLAY_TOP_TO_BOTTOM
             },
             .backgroundColor = CurrentTheme->contentBackgroundColor
@@ -161,7 +177,8 @@ int main() {
                 },
                 .backgroundColor = CurrentTheme->navBarColor
             }) {
-                const int viewCount = sizeof(viewStates) / sizeof(viewStates[0]);
+                // Update selected tab
+                const int viewCount = viewStates.size();
                 for (int i = 0; i < viewCount; ++i) {
                     CLAY({
                         .id = viewStates[i].tabId,
@@ -177,6 +194,7 @@ int main() {
                         currentView = static_cast<ActiveView>(i);
                     }
                 }
+                // Theme toggler
                 CLAY({
                     .id = CLAY_ID("ToggleThemeButton"),
                     .layout = {
@@ -187,10 +205,12 @@ int main() {
 
                 if (Clay_PointerOver(CLAY_ID("ToggleThemeButton")) && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
                     CurrentTheme = (CurrentTheme == &LightTheme) ? &DarkTheme : &LightTheme;
+                    viewStates = BuildViewStatesFromTheme(CurrentTheme);
+
                 }
             }
 
-            // Header box below NavBar
+            // Header box 
             CLAY({
                 .id = CLAY_ID("HeaderBox"),
                 .layout = {
@@ -296,7 +316,7 @@ int main() {
         }
 
         // Draw tab labels
-        int viewCount = sizeof(viewStates) / sizeof(viewStates[0]);
+        int viewCount = viewStates.size();
         for (int i = 0; i < viewCount; ++i) {
             DrawCenteredTextInElement(commands, viewStates[i].tabId, viewStates[i].label, 14, WHITE);
         }
