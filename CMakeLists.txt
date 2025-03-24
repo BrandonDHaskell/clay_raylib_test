@@ -12,14 +12,16 @@ find_package(raylib REQUIRED)
 # Header files
 include_directories(
     ${PROJECT_SOURCE_DIR}/external/clay
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/include/themes
 )
 
 # Source files
 file(GLOB_RECURSE SOURCES
-    src/main.cpp
+    src/*cpp
 )
 
-add_executable(${PROJECT_NAME}
+add_executable(${PROJECT_NAME} ${SOURCES}
     src/main.cpp
     external/clay/clay.h
 )
